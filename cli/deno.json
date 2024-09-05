@@ -1,0 +1,11 @@
+{
+    "lock": false,
+    "imports": {
+        "@std/cli": "jsr:@std/cli@^1.0.5",
+        "@std/media-types": "jsr:@std/media-types@^1.0.3",
+        "@std/path": "jsr:@std/path@^1.0.4",
+        "esbuild": "npm:esbuild@^0.23.1",
+        "jsdom": "npm:jsdom@^25.0.0",
+        "vm": "npm:vm@^0.1.0"
+    }
+}

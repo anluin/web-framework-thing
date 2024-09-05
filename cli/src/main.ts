@@ -1,5 +1,6 @@
 import { parseArgs } from "@std/cli/parse-args";
-import { join } from "@std/path";
+import { contentType } from "@std/media-types";
+import { extname, join } from "@std/path";
 
 import { default as vm } from "vm";
 import * as esbuild from "esbuild";
@@ -37,29 +38,46 @@ async function serve() {
         filename: "/index.js",
     });
 
-    await (
-        Deno.serve(async (request) => {
-            if (request.headers.get("accept")?.includes("text/html")) {
-                const dom = new jsdom.JSDOM(`<!DOCTYPE html>`, {
-                    runScripts: "outside-only",
-                });
+    await Deno.serve(async (request) => {
+        const url = new URL(request.url);
 
-                await script.runInContext(dom.getInternalVMContext());
-
-                return new Response(dom.serialize(), {
-                    status: 200,
-                    headers: {
-                        "Content-Type": "text/html; charset=utf-8",
-                    },
-                });
-            }
-
-            return new Response(undefined, {
-                status: 404,
+        if (request.headers.get("accept")?.includes("text/html")) {
+            const dom = new jsdom.JSDOM(`<!DOCTYPE html>`, {
+                runScripts: "outside-only",
+                url: request.url,
             });
-        })
-            .finished
-    );
+
+            await script.runInContext(dom.getInternalVMContext());
+
+            return new Response(dom.serialize(), {
+                status: 200,
+                headers: {
+                    "Content-Type": "text/html; charset=utf-8",
+                },
+            });
+        }
+
+        const outputFile = buildResult.outputFiles.find((outputFile) =>
+            outputFile.path === url.pathname
+        );
+
+        if (outputFile) {
+            return new Response(outputFile.contents, {
+                status: 200,
+                headers: {
+                    "Content-Type": (
+                        contentType(extname(outputFile.path)) ??
+                            "application/octet-stream"
+                    ),
+                },
+            });
+        }
+
+        return new Response(undefined, {
+            status: 404,
+        });
+    })
+        .finished;
 }
 
 async function main(args: string[]) {

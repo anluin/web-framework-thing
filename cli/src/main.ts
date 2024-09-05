@@ -47,6 +47,30 @@ async function serve() {
                 url: request.url,
             });
 
+            if (
+                buildResult.outputFiles
+                    .find((outputFile) => outputFile.path === "/index.css")
+            ) {
+                const { document } = dom.window;
+
+                const link = document.createElement("link");
+                link.rel = "stylesheet";
+                link.href = "/index.css";
+                document.head.appendChild(link);
+            }
+
+            if (
+                buildResult.outputFiles
+                    .find((outputFile) => outputFile.path === "/index.js")
+            ) {
+                const { document } = dom.window;
+
+                const script = document.createElement("script");
+                script.type = "module";
+                script.src = "/index.js";
+                document.head.appendChild(script);
+            }
+
             await script.runInContext(dom.getInternalVMContext());
 
             return new Response(dom.serialize(), {

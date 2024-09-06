@@ -1,12 +1,19 @@
 import "./main.css";
 
-document.title = "Hello, world!";
+// Available inside server side rendering context
+// Can be used to manipulate the response
+declare const server: {
+    readonly response: Response;
 
+    // Before the DOM is serialized and sent to the client,
+    // all notified promises are waited for.
+    notifyPendingPromise(promise: Promise<unknown>): void;
+} | undefined;
 
-const body = document.createElement("body");
+if (server) {
+    document.title = "Hello, world!";
 
-body.appendChild(
-    document.createTextNode("Hello, world!"),
-);
-
-document.body.replaceWith(body);
+    document.body.appendChild(
+        document.createTextNode("Hello, world!"),
+    );
+}

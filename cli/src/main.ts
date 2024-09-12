@@ -1,11 +1,10 @@
+import { basename, extname, join } from "@std/path";
 import { parseArgs } from "@std/cli/parse-args";
 import { contentType } from "@std/media-types";
-import { extname, join } from "@std/path";
 
 import { default as vm } from "vm";
 import * as esbuild from "esbuild";
 import * as jsdom from "jsdom";
-
 
 async function serve() {
     const projectRootDirectoryPath = Deno.cwd();
@@ -22,12 +21,15 @@ async function serve() {
         format: "esm",
         bundle: true,
         outdir: "/",
-        entryNames: "index",
+        entryNames: "[hash]",
+        assetNames: "[hash]",
+        chunkNames: "[hash]",
         minify: true,
         absWorkingDir: projectRootDirectoryPath,
         entryPoints: [
             frontendEntryPointFilePath,
         ],
+        metafile: true,
     } satisfies esbuild.BuildOptions;
 
     const [
@@ -36,6 +38,7 @@ async function serve() {
     ] = await Promise.all([
         esbuild.build({
             ...sharedBuildOptions,
+            entryNames: "index",
         }),
         esbuild.build({
             ...sharedBuildOptions,
@@ -44,6 +47,27 @@ async function serve() {
             },
         }),
     ]);
+
+    let jsBundleOutputFileName: string | undefined;
+    let cssBundleOutputFileName: string | undefined;
+
+    for (const outputKey in clientSideBuildResult.metafile.outputs) {
+        const output = clientSideBuildResult.metafile.outputs[outputKey];
+
+        if (output.entryPoint) {
+            jsBundleOutputFileName = `/${basename(outputKey)}`;
+
+            if (output.cssBundle) {
+                cssBundleOutputFileName = `/${basename(output.cssBundle)}`;
+            }
+
+            break;
+        }
+    }
+
+    if (!jsBundleOutputFileName) {
+        throw new Error("failed to find js bundle file name!");
+    }
 
     const indexJsOutputFile = serverSideBuildResult.outputFiles.find((
         outputFile,
@@ -70,6 +94,7 @@ async function serve() {
                         contentType(extname(outputFile.path)) ??
                             "application/octet-stream"
                     ),
+                    "Cache-Control": "public, max-age=315360000",
                 },
             });
         }
@@ -81,30 +106,6 @@ async function serve() {
             });
 
             try {
-                if (
-                    clientSideBuildResult.outputFiles
-                        .find((outputFile) => outputFile.path === "/index.css")
-                ) {
-                    const { document } = dom.window;
-
-                    const link = document.createElement("link");
-                    link.rel = "stylesheet";
-                    link.href = "/index.css";
-                    document.head.appendChild(link);
-                }
-
-                if (
-                    clientSideBuildResult.outputFiles
-                        .find((outputFile) => outputFile.path === "/index.js")
-                ) {
-                    const { document } = dom.window;
-
-                    const script = document.createElement("script");
-                    script.type = "module";
-                    script.src = "/index.js";
-                    document.head.appendChild(script);
-                }
-
                 const response = new Response(undefined, {
                     status: 200,
                     headers: {
@@ -116,6 +117,10 @@ async function serve() {
 
                 await script.runInContext(dom.getInternalVMContext())({
                     response,
+                    bundle: {
+                        jsBundleFileName: jsBundleOutputFileName,
+                        cssBundleFileName: cssBundleOutputFileName,
+                    },
                     notifyPendingPromise(promise: Promise<unknown>) {
                         pendingPromises.push(promise);
                     },

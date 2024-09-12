@@ -133,7 +133,9 @@ async function serve() {
                     },
                 };
 
-                await script.runInContext(dom.getInternalVMContext())(serverContext);
+                await script.runInContext(dom.getInternalVMContext())(
+                    serverContext,
+                );
 
                 while (pendingPromises.length > 0) {
                     await Promise.all(pendingPromises.splice(0));

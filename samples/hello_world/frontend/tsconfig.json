@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "paths": {
+            "@lib/frontend/*": [
+                "../../../lib/frontend/*"
+            ]
+        }
+    }
+}

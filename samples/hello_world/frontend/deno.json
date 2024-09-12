@@ -5,5 +5,8 @@
             "dom",
             "dom.iterable"
         ]
+    },
+    "imports": {
+        "@lib/frontend/": "../../../lib/frontend/"
     }
 }

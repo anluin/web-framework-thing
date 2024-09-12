@@ -10,12 +10,17 @@ declare const server: {
         cssBundleFileName?: string;
     };
 
+    // TODO: Write useful comment
+    cacheResponse: boolean;
+
     // Before the DOM is serialized and sent to the client,
     // all notified promises are waited for.
     notifyPendingPromise(promise: Promise<unknown>): void;
 } | undefined;
 
 if (server) {
+    server.cacheResponse = true;
+
     const script = document.createElement("script");
     script.src = server.bundle.jsBundleFileName;
     script.type = "module";

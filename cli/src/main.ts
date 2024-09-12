@@ -79,15 +79,12 @@ async function serve() {
         filename: "/index.js",
     });
 
-    await Deno.serve(async (request) => {
-        const url = new URL(request.url);
+    const cachedResponses = new Map<string, Response>();
 
-        const outputFile = clientSideBuildResult.outputFiles.find((
-            outputFile,
-        ) => outputFile.path === url.pathname);
-
-        if (outputFile) {
-            return new Response(outputFile.contents, {
+    for (const outputFile of clientSideBuildResult.outputFiles) {
+        cachedResponses.set(
+            outputFile.path,
+            new Response(outputFile.contents, {
                 status: 200,
                 headers: {
                     "Content-Type": (
@@ -96,7 +93,16 @@ async function serve() {
                     ),
                     "Cache-Control": "public, max-age=315360000",
                 },
-            });
+            }),
+        );
+    }
+
+    await Deno.serve(async (request) => {
+        const url = new URL(request.url);
+        const cachedResponse = cachedResponses.get(url.pathname);
+
+        if (cachedResponse) {
+            return cachedResponse.clone();
         }
 
         if (request.headers.get("accept")?.includes("text/html")) {
@@ -106,7 +112,7 @@ async function serve() {
             });
 
             try {
-                const response = new Response(undefined, {
+                let response = new Response(undefined, {
                     status: 200,
                     headers: {
                         "Content-Type": "text/html; charset=utf-8",
@@ -115,22 +121,32 @@ async function serve() {
 
                 const pendingPromises: Promise<unknown>[] = [];
 
-                await script.runInContext(dom.getInternalVMContext())({
+                const serverContext = {
                     response,
                     bundle: {
                         jsBundleFileName: jsBundleOutputFileName,
                         cssBundleFileName: cssBundleOutputFileName,
                     },
+                    cacheResponse: false,
                     notifyPendingPromise(promise: Promise<unknown>) {
                         pendingPromises.push(promise);
                     },
-                });
+                };
+
+                await script.runInContext(dom.getInternalVMContext())(serverContext);
 
                 while (pendingPromises.length > 0) {
                     await Promise.all(pendingPromises.splice(0));
                 }
 
-                return new Response(dom.serialize(), response);
+                response = new Response(dom.serialize(), response);
+
+                if (serverContext.cacheResponse) {
+                    cachedResponses.set(url.pathname, response);
+                    response = response.clone();
+                }
+
+                return response;
             } finally {
                 dom.window.close();
             }

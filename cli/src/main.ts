@@ -30,6 +30,7 @@ async function serve() {
             frontendEntryPointFilePath,
         ],
         metafile: true,
+        sourcemap: "inline",
     } satisfies esbuild.BuildOptions;
 
     const [
@@ -120,14 +121,20 @@ async function serve() {
                 });
 
                 const pendingPromises: Promise<unknown>[] = [];
-
                 const serverContext = {
                     response,
                     bundle: {
                         jsBundleFileName: jsBundleOutputFileName,
                         cssBundleFileName: cssBundleOutputFileName,
                     },
-                    cacheResponse: false,
+                    cacheResponse:
+                        ((cacheResponse = false) => (value?: boolean) => {
+                            if (value !== undefined) {
+                                cacheResponse = value;
+                            }
+
+                            return cacheResponse;
+                        })(),
                     notifyPendingPromise(promise: Promise<unknown>) {
                         pendingPromises.push(promise);
                     },
@@ -143,7 +150,7 @@ async function serve() {
 
                 response = new Response(dom.serialize(), response);
 
-                if (serverContext.cacheResponse) {
+                if (serverContext.cacheResponse()) {
                     cachedResponses.set(url.pathname, response);
                     response = response.clone();
                 }

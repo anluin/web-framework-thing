@@ -1,25 +1,47 @@
-import "@lib/frontend/global.ts"
+import { element, restore, SKIP, text } from "@lib/frontend/shadow.ts";
+import { computed, signal } from "@lib/frontend/reactivity.ts";
 
 import "./main.css";
 
-if (server) {
-    server.cacheResponse = true;
+const App = () => {
+    const $numClicks = signal(0);
 
-    const script = document.createElement("script");
-    script.src = server.bundle.jsBundleFileName;
-    script.type = "module";
-    document.head.appendChild(script);
+    return (
+        element.body([
+            element.button({
+                onClick() {
+                    $numClicks.value += 1;
+                },
+            }, [
+                computed(() => {
+                    if ($numClicks.value > 0) {
+                        return text(`Num clicks: ${$numClicks.peekValue}`);
+                    }
 
-    if (server.bundle.cssBundleFileName) {
-        const link = document.createElement("link");
-        link.href = server.bundle.cssBundleFileName;
-        link.rel = "stylesheet";
-        document.head.appendChild(link);
-    }
-
-    document.title = "Hello, world!";
-
-    document.body.appendChild(
-        document.createTextNode("Hello, world!"),
+                    return text("Click me!");
+                }),
+            ]),
+        ])
     );
-}
+};
+
+server?.cacheResponse(true);
+restore(document.documentElement)
+    .replaceWith(
+        element.html({}, [
+            element.head([
+                element.title([
+                    ...text`Hello, world!`,
+                ]),
+                element.link({
+                    rel: "stylesheet",
+                    href: server?.bundle.cssBundleFileName ?? SKIP,
+                }),
+                element.script({
+                    type: "module",
+                    src: server?.bundle.jsBundleFileName ?? SKIP,
+                }),
+            ]),
+            App(),
+        ]),
+    );

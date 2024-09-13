@@ -10,7 +10,7 @@ declare global {
         };
 
         // TODO: Write useful comment
-        cacheResponse: boolean;
+        cacheResponse(value?: boolean): boolean;
 
         // Before the DOM is serialized and sent to the client,
         // all notified promises are waited for.

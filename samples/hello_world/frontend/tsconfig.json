@@ -2,7 +2,7 @@
     "compilerOptions": {
         "paths": {
             "@lib/frontend/*": [
-                "../../../lib/frontend/*"
+                "../../../lib/frontend/src/*"
             ]
         }
     }

@@ -148,6 +148,14 @@ async function serve() {
                     await Promise.all(pendingPromises.splice(0));
                 }
 
+                for (
+                    const element of dom.window.document.querySelectorAll(
+                        "button, fieldset, optgroup, option, select, textarea, input",
+                    )
+                ) {
+                    element.disabled = true;
+                }
+
                 response = new Response(dom.serialize(), response);
 
                 if (serverContext.cacheResponse()) {
